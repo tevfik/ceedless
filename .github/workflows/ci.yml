@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: build & test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: cli/go.mod
+
+      - name: Show toolchain
+        run: |
+          gcc --version || true
+          make --version
+          go version
+
+      - name: Build everything (cli + framework + examples + smoke)
+        run: make all
+
+      - name: Run ceedless doctor
+        run: ./bin/ceedless doctor
+
+  lint:
+    name: gofmt + go vet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: cli/go.mod
+      - name: gofmt
+        working-directory: cli
+        run: |
+          out=$(gofmt -l .)
+          if [ -n "$out" ]; then
+            echo "::error::gofmt diff in: $out"
+            gofmt -d .
+            exit 1
+          fi
+      - name: go vet
+        working-directory: cli
+        run: go vet ./...
+
+  coverage:
+    name: coverage (gcov)
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: cli/go.mod
+      - name: Install gcovr
+        run: sudo apt-get update && sudo apt-get install -y gcovr
+      - name: Build CLI
+        run: make cli
+      - name: Run framework self-tests with coverage
+        run: |
+          mkdir -p demo && cd demo
+          ../bin/ceedless new app
+          cd app
+          CEEDLESS_HOME=$GITHUB_WORKSPACE ../../bin/ceedless module hello
+          CEEDLESS_HOME=$GITHUB_WORKSPACE ../../bin/ceedless cov
+      - name: Upload coverage HTML
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: demo/app/build/coverage.html
+
+  docker:
+    name: docker image build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        run: docker build -t ceedless:ci .
+      - name: Smoke test inside container
+        run: |
+          mkdir -p demo
+          docker run --rm -v "$PWD/demo":/work ceedless:ci \
+            sh -c "ceedless new app && cd app && ceedless module hello && ceedless test"

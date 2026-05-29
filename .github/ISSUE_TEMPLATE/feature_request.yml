@@ -1,0 +1,18 @@
+name: Feature request
+description: Suggest a new feature, peripheral model, or CLI command
+labels: [enhancement]
+body:
+  - type: textarea
+    attributes:
+      label: Use case
+      description: What are you trying to do? Why is the current behavior insufficient?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Alternatives considered
