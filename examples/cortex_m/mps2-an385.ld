@@ -23,6 +23,18 @@ SECTIONS {
         _etext = .;
     } > FLASH
 
+    /* ARM exception index table — required by libgcc unwinder even when
+     * we don't use exceptions; provide empty section + start/end symbols.
+     */
+    .ARM.extab : {
+        *(.ARM.extab* .gnu.linkonce.armextab.*)
+    } > FLASH
+    __exidx_start = .;
+    .ARM.exidx : {
+        *(.ARM.exidx* .gnu.linkonce.armexidx.*)
+    } > FLASH
+    __exidx_end = .;
+
     /* .data is loaded from FLASH, copied to RAM by Reset_Handler */
     _sidata = LOADADDR(.data);
     .data : {

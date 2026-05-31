@@ -10,7 +10,7 @@ RUN cd cli && \
 FROM debian:stable-slim
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        gcc make gcovr ca-certificates && \
+        gcc libc6-dev make gcovr ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 # Framework sources are read by the CLI at runtime.
