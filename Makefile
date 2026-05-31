@@ -31,7 +31,8 @@ SELFTEST_SRC := \
     tests/test_assertions.c \
     tests/test_exception.c \
     tests/test_mock.c \
-    tests/test_peripherals.c
+    tests/test_peripherals.c \
+    tests/test_extensions.c
 
 EXAMPLE_SRC := \
     examples/sensor_driver/sensor_driver.c \

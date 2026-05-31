@@ -10,4 +10,5 @@ void run_assertions_tests        (void);
 void run_exception_tests         (void);
 void run_mock_tests              (void);
 void run_peripherals_tests       (void);
+void run_extensions_tests        (void);
 #endif

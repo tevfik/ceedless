@@ -127,6 +127,26 @@ static void test_stub_with_callback(void)
     TEST_ASSERT_EQUAL_INT(2, MOCK_CALL_COUNT(hal_send));
 }
 
+/* Matcher: pass when value is in [lo, hi]. */
+struct range { uint16_t lo, hi; };
+static int match_value_range(const void *args, size_t alen, void *user)
+{
+    if (alen != sizeof(struct hal_send_args)) return 0;
+    const struct hal_send_args *a = args;
+    const struct range *r = user;
+    return a->value >= r->lo && a->value <= r->hi;
+}
+
+static void test_expect_with_matcher(void)
+{
+    MOCK_RESET(hal_send);
+    static struct range r = { .lo = 100, .hi = 200 };
+    int rv = 42;
+    MOCK_EXPECT_WITH_MATCHER(hal_send, match_value_range, &r, &rv, sizeof rv);
+    TEST_ASSERT_EQUAL_INT(42, hal_send(0xAA, 150));
+    MOCK_VERIFY(hal_send);
+}
+
 void run_mock_tests(void)
 {
     RUN_TEST(test_expect_and_return_in_order);
@@ -135,4 +155,5 @@ void run_mock_tests(void)
     RUN_TEST(test_return_thru_ptr);
     RUN_TEST(test_expect_and_throw);
     RUN_TEST(test_stub_with_callback);
+    RUN_TEST(test_expect_with_matcher);
 }

@@ -18,5 +18,6 @@ int main(void)
     run_exception_tests();
     run_mock_tests();
     run_peripherals_tests();
+    run_extensions_tests();
     return ceedless_end();
 }

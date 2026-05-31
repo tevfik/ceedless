@@ -40,6 +40,8 @@ func main() {
 	register(command{"bench", "run tests and report timing per test", cmdBench})
 	register(command{"watch", "re-run tests on file changes", cmdWatch})
 	register(command{"mock", "generate MOCK_DEFINE boilerplate from a header", cmdMock})
+	register(command{"fuzz", "build & run a libFuzzer harness for a function", cmdFuzz})
+	register(command{"report", "aggregate JUnit XMLs into an HTML report", cmdReport})
 	register(command{"doctor", "diagnose toolchain availability", cmdDoctor})
 	register(command{"clean", "remove build/", cmdClean})
 	register(command{"docker", "run any subcommand inside the container", cmdDocker})

@@ -20,10 +20,16 @@ type testOpts struct {
 	verbose   bool
 	gcov      bool
 	junitDir  string
+	tapDir    string
 	target    string
 	timing    bool
 	format    string
 	reportDir string
+	asan      bool
+	ubsan     bool
+	msan      bool
+	shuffle   bool
+	seed      uint64
 }
 
 type buildResult struct {
@@ -47,10 +53,16 @@ func parseTestFlags(args []string, o *testOpts) []string {
 	fs.BoolVar(&o.verbose, "v", false, "verbose: echo compiler command lines")
 	fs.BoolVar(&o.gcov, "gcov", false, "build with --coverage")
 	fs.StringVar(&o.junitDir, "junit-dir", "", "write JUnit XML per test program here")
+	fs.StringVar(&o.tapDir, "tap-dir", "", "write TAP report per test program here")
 	fs.StringVar(&o.target, "target", "", "value passed via -DCEEDLESS_TARGET=…")
 	fs.BoolVar(&o.timing, "timing", false, "show per-test program wall time")
 	fs.StringVar(&o.format, "format", "text", "report format: text|tap")
 	fs.StringVar(&o.reportDir, "report-dir", "", "collect all reports under DIR")
+	fs.BoolVar(&o.asan, "asan", false, "build with AddressSanitizer (-fsanitize=address)")
+	fs.BoolVar(&o.ubsan, "ubsan", false, "build with UndefinedBehaviorSanitizer")
+	fs.BoolVar(&o.msan, "msan", false, "build with MemorySanitizer (clang only)")
+	fs.BoolVar(&o.shuffle, "shuffle", false, "randomize test order; pair with -seed for repro")
+	fs.Uint64Var(&o.seed, "seed", 0, "PRNG seed (non-zero implies -shuffle)")
 	_ = fs.Parse(args)
 	return fs.Args()
 }
@@ -68,6 +80,12 @@ func cmdTest(args []string) error {
 		if o.junitDir == "" {
 			o.junitDir = o.reportDir
 		}
+		if o.tapDir == "" && o.format == "tap" {
+			o.tapDir = o.reportDir
+		}
+	}
+	if o.seed != 0 {
+		o.shuffle = true
 	}
 	return runTests(o)
 }
@@ -101,6 +119,11 @@ func runTests(o *testOpts) error {
 			return err
 		}
 	}
+	if o.tapDir != "" {
+		if err := os.MkdirAll(o.tapDir, 0o755); err != nil {
+			return err
+		}
+	}
 
 	cc := os.Getenv("CC")
 	if cc == "" {
@@ -110,6 +133,15 @@ func runTests(o *testOpts) error {
 	baseFlags := append([]string{}, cfg.CFlags...)
 	if o.gcov {
 		baseFlags = append(baseFlags, "--coverage", "-O0")
+	}
+	if o.asan {
+		baseFlags = append(baseFlags, "-fsanitize=address", "-fno-omit-frame-pointer", "-O1", "-g")
+	}
+	if o.ubsan {
+		baseFlags = append(baseFlags, "-fsanitize=undefined", "-fno-omit-frame-pointer", "-g")
+	}
+	if o.msan {
+		baseFlags = append(baseFlags, "-fsanitize=memory", "-fno-omit-frame-pointer", "-g")
 	}
 	defines := []string{"-DCEEDLESS_TRACE_HOST"}
 	for _, d := range cfg.Defines {
@@ -169,6 +201,19 @@ func runTests(o *testOpts) error {
 		if o.junitDir != "" {
 			c.Env = append(c.Env, "CEEDLESS_JUNIT="+filepath.Join(o.junitDir, stem+".xml"))
 		}
+		if o.tapDir != "" {
+			c.Env = append(c.Env, "CEEDLESS_TAP="+filepath.Join(o.tapDir, stem+".tap"))
+		}
+		if o.shuffle {
+			seed := o.seed
+			if seed == 0 {
+				seed = uint64(time.Now().UnixNano()) & 0xFFFFFFFF
+				if seed == 0 {
+					seed = 0xC0FFEE
+				}
+			}
+			c.Env = append(c.Env, fmt.Sprintf("CEEDLESS_SEED=0x%X", seed))
+		}
 		t0 := time.Now()
 		err := c.Run()
 		dur := time.Since(t0)
@@ -212,7 +257,7 @@ func buildOne(test, cc string, baseFlags, defines, includes, core []string, cfg 
 		return br
 	}
 
-	sources := []string{test, runner}
+	sources := []string{runner}
 	sources = append(sources, cfg.ExtraFiles...)
 	sources = append(sources, core...)
 	for _, sd := range cfg.SrcDirs {

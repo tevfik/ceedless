@@ -39,6 +39,15 @@ int  ceedless_total_count  (void);
 /* Emit a JUnit-style XML report to `path` on ceedless_end(). */
 void ceedless_set_junit_path(const char *path);
 
+/* Emit a TAP (Test Anything Protocol) report to `path` on ceedless_end(). */
+void ceedless_set_tap_path(const char *path);
+
+/* Test-order shuffle. seed==0 means "leave order alone".
+ * When set, RUN_TEST() queues tests into an internal buffer and ceedless_end()
+ * pulls them out in a deterministic shuffled order using xorshift32(seed). */
+void     ceedless_set_shuffle_seed(uint32_t seed);
+uint32_t ceedless_get_shuffle_seed(void);
+
 /* User-overridable hooks (Unity-style). Defaults are weak no-ops. */
 void setUp(void);
 void tearDown(void);
@@ -49,10 +58,25 @@ int  suiteTearDown(int num_failures);
 extern jmp_buf ceedless_jmp_;
 
 void ceedless_run_     (const char *name, ceedless_fn_t fn);
+void ceedless_begin_case_(const char *name, const char *label);
+void ceedless_end_case_  (void);
+
 void ceedless_fail_msg_(const char *expr, const char *file, int line, const char *msg);
 void ceedless_ignore_  (const char *file, int line, const char *msg);
 void ceedless_pass_    (const char *file, int line, const char *msg);
 void ceedless_message_ (const char *file, int line, const char *msg);
+
+/* Pseudo-random number for property tests & shuffling. xorshift32. */
+uint32_t ceedless_rand_u32(void);
+void     ceedless_rand_seed(uint32_t s);
+
+/* Golden-file comparison: hash `actual` (n bytes), compare to file
+ *   tests/golden/<suite>/<label>.bin
+ * If the file is missing, write it (golden capture). If env var
+ *   CEEDLESS_GOLDEN_UPDATE=1
+ * is set, the file is overwritten regardless. Returns 0 on match. */
+int  ceedless_check_golden_(const char *label, const void *actual, size_t n,
+                            const char *file, int line);
 
 void ceedless_assert_equal_int_       (long long e, long long a, const char *expr, const char *file, int line, const char *msg);
 void ceedless_assert_equal_uint_      (unsigned long long e, unsigned long long a, const char *expr, const char *file, int line, const char *msg);
@@ -80,6 +104,27 @@ enum { CEEDLESS_FC_INF=1, CEEDLESS_FC_NEG_INF=2, CEEDLESS_FC_NAN=3, CEEDLESS_FC_
  * ====================================================================== */
 
 #define RUN_TEST(name)  ceedless_run_(#name, (name))
+
+/* RUN_TEST_CASE(name, label, args...) runs `name(args)` with the printable
+ * `label` shown in [RUN]/[PASS] output. Use with parametric tests:
+ *
+ *   static void test_add(int a, int b, int e) { TEST_ASSERT_EQUAL(e, a+b); }
+ *   RUN_TEST_CASE(test_add, "1+2=3", 1, 2, 3);
+ */
+#define RUN_TEST_CASE(name, label, ...) do {                    \
+    ceedless_begin_case_(#name, (label));                       \
+    if (setjmp(ceedless_jmp_) == 0) {                           \
+        setUp();                                                \
+        (name)(__VA_ARGS__);                                    \
+    }                                                           \
+    tearDown();                                                 \
+    ceedless_end_case_();                                       \
+} while (0)
+
+/* TEST_CASE(args...) is a runner-generator annotation. It expands to nothing
+ * for the compiler; the CLI's auto-runner scans for these lines preceding a
+ * `void test_<name>(...)` and emits one RUN_TEST_CASE call per occurrence. */
+#define TEST_CASE(...) /* runner-discovery annotation */
 
 #define TEST_FAIL()                  ceedless_fail_msg_("TEST_FAIL", __FILE__, __LINE__, "")
 #define TEST_FAIL_MESSAGE(msg)       ceedless_fail_msg_("TEST_FAIL", __FILE__, __LINE__, (msg))
@@ -235,6 +280,27 @@ enum { CEEDLESS_FC_INF=1, CEEDLESS_FC_NEG_INF=2, CEEDLESS_FC_NAN=3, CEEDLESS_FC_
 #define TEST_ASSERT_EQUAL_HEX_MESSAGE(e,a,m)     ceedless_assert_equal_hex_((unsigned long long)(e),(unsigned long long)(a),32,#e" == "#a,__FILE__,__LINE__,(m))
 #define TEST_ASSERT_EQUAL_STRING_MESSAGE(e,a,m)  ceedless_assert_equal_string_((e),(a),#e" == "#a,__FILE__,__LINE__,(m))
 #define TEST_ASSERT_EQUAL_MEMORY_MESSAGE(e,a,n,m) ceedless_assert_equal_memory_((e),(a),(size_t)(n),#e" == "#a,__FILE__,__LINE__,(m))
+
+/* --- Snapshot / golden-file assertion ----------------------------------- *
+ * Compares `n` bytes at `a` against tests/golden/<suite>/<label>.bin.
+ * Captures the file on first run (when missing) or whenever the env var
+ * CEEDLESS_GOLDEN_UPDATE=1 is set; otherwise fails the test on mismatch.
+ */
+#define TEST_ASSERT_GOLDEN_BYTES(label, a, n) \
+    (void)ceedless_check_golden_((label),(a),(size_t)(n),__FILE__,__LINE__)
+
+/* --- Property-based test loop ------------------------------------------ *
+ * Runs `body` `iters` times with `var` set to a fresh u32 each iteration.
+ * Use TEST_ASSERT_* inside body. The seed is the suite seed (set with
+ * ceedless_set_shuffle_seed or CEEDLESS_SEED env var) so failures are
+ * reproducible.
+ */
+#define TEST_PROPERTY(var, iters, body) do {                    \
+    for (uint32_t _i = 0; _i < (uint32_t)(iters); _i++) {       \
+        uint32_t var = ceedless_rand_u32();                     \
+        body                                                    \
+    }                                                           \
+} while (0)
 
 #ifdef CEEDLESS_TARGET
 #  define TEST_ASSERT_HW(c)     TEST_ASSERT_TRUE(c)

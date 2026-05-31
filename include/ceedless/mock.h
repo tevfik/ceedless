@@ -58,6 +58,9 @@ struct mock_s;
 typedef void (*mock_callback_t)(struct mock_s *m, const void *args, size_t alen,
                                 void *ret, size_t rlen, int call_index);
 
+/* User-supplied argument matcher. Return non-zero to accept the call. */
+typedef int  (*mock_matcher_t)(const void *args, size_t alen, void *user);
+
 typedef struct {
     int    has_args;
     size_t args_len;
@@ -77,6 +80,10 @@ typedef struct {
     size_t rt_arg_offset;
     size_t rt_len;
     uint8_t rt_data[CEEDLESS_MOCK_ARG_BYTES];
+
+    /* Custom argument matcher. When set, runs INSTEAD of byte-wise compare. */
+    mock_matcher_t matcher_cb;
+    void          *matcher_user;
 } mock_record_t;
 
 typedef struct mock_s {
@@ -106,6 +113,11 @@ void mock_expect_and_throw           (mock_t *m, const void *args, size_t alen, 
 void mock_return_thru_ptr            (mock_t *m, size_t arg_offset,
                                       const void *data, size_t dlen);
 
+/* Expect a call accepted by a user-supplied matcher; returns the supplied
+ * value (or zeros if ret==NULL). User keeps ownership of `user`. */
+void mock_expect_with_matcher        (mock_t *m, mock_matcher_t cb, void *user,
+                                      const void *ret, size_t rlen);
+
 /* --- Ignore / Stub ------------------------------------------------------*/
 void mock_ignore                (mock_t *m);
 void mock_ignore_and_return     (mock_t *m, const void *ret, size_t rlen);
@@ -133,6 +145,8 @@ int  mock_calls   (mock_t *m);
                                   mock_expect_any_args_and_return(&_n##_mock,(r),(rl))
 #define MOCK_EXPECT_AND_THROW(_n,a,al,code) \
                                   mock_expect_and_throw(&_n##_mock,(a),(al),(code))
+#define MOCK_EXPECT_WITH_MATCHER(_n,cb,user,r,rl) \
+                                  mock_expect_with_matcher(&_n##_mock,(cb),(user),(r),(rl))
 #define MOCK_RETURN_THRU_PTR(_n,off,d,dl) \
                                   mock_return_thru_ptr(&_n##_mock,(off),(d),(dl))
 #define MOCK_IGNORE(_n)                 mock_ignore(&_n##_mock)

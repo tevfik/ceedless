@@ -86,6 +86,19 @@ void mock_return_thru_ptr(mock_t *m, size_t arg_offset, const void *data, size_t
     copy_bounded(r->rt_data, sizeof r->rt_data, data, dlen);
 }
 
+void mock_expect_with_matcher(mock_t *m, mock_matcher_t cb, void *user,
+                              const void *ret, size_t rlen)
+{
+    mock_record_t *r = next_slot(m);
+    memset(r, 0, sizeof *r);
+    r->matcher_cb   = cb;
+    r->matcher_user = user;
+    if (ret && rlen) {
+        r->has_ret = 1; r->ret_len = rlen;
+        copy_bounded(r->ret, sizeof r->ret, ret, rlen);
+    }
+}
+
 void mock_ignore(mock_t *m) { m->ignore = 1; m->ignore_has_ret = 0; }
 void mock_ignore_and_return(mock_t *m, const void *ret, size_t rlen)
 {
@@ -137,7 +150,15 @@ void mock_invoke(mock_t *m, const void *args, size_t alen,
 
     mock_record_t *r = &m->records[m->head++];
 
-    if (r->has_args && !r->ignore_args) {
+    if (r->matcher_cb) {
+        if (!r->matcher_cb(args, alen, r->matcher_user)) {
+            char buf[160];
+            snprintf(buf, sizeof buf, "%s call#%d rejected by matcher",
+                     m->name ? m->name : "(mock)", m->calls);
+            ceedless_fail_msg_(m->name ? m->name : "mock", __FILE__, __LINE__, buf);
+            return;
+        }
+    } else if (r->has_args && !r->ignore_args) {
         if (alen != r->args_len ||
             memcmp(args, r->args, alen < r->args_len ? alen : r->args_len) != 0) {
             char ea[3 * CEEDLESS_MOCK_ARG_BYTES + 8];
