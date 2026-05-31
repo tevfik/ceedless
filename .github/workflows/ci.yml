@@ -94,7 +94,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi qemu-system-arm
       - name: Build & run Cortex-M3 PIL example
         working-directory: examples/cortex_m
-        run: make qemu | tee qemu.log
+        run: make qemu 2>&1 | tee qemu.log
       - name: Assert all tests passed on target
         working-directory: examples/cortex_m
         run: grep -q '3/3 passed, 0 failed' qemu.log
