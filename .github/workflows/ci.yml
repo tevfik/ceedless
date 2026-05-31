@@ -84,6 +84,21 @@ jobs:
           name: coverage-html
           path: demo/app/build/coverage.html
 
+  cortex_m:
+    name: cortex-m PIL (QEMU)
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ARM toolchain + QEMU
+        run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi qemu-system-arm
+      - name: Build & run Cortex-M3 PIL example
+        working-directory: examples/cortex_m
+        run: make qemu | tee qemu.log
+      - name: Assert all tests passed on target
+        working-directory: examples/cortex_m
+        run: grep -q '3/3 passed, 0 failed' qemu.log
+
   docker:
     name: docker image build
     runs-on: ubuntu-latest

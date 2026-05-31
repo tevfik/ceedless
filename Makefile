@@ -40,7 +40,7 @@ EXAMPLE_SRC := \
 
 BUILD := build
 
-.PHONY: all cli test example cli-test docker docker-test lint clean
+.PHONY: all cli test example cli-test docker docker-test lint clean cortex_m
 all: cli test example cli-test
 
 # Build the Go CLI into bin/ceedless. Pure stdlib, no deps.
@@ -111,6 +111,11 @@ lint:
 	@cd cli && go vet ./...
 	@echo "==> go test"
 	@cd cli && go test ./...
+
+# Build & run the Cortex-M3 PIL example under QEMU. Skipped from `make all`
+# because it requires arm-none-eabi-gcc + qemu-system-arm.
+cortex_m:
+	$(MAKE) -C examples/cortex_m qemu
 
 clean:
 	rm -rf $(BUILD)

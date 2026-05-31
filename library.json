@@ -1,0 +1,34 @@
+{
+    "name": "ceedless",
+    "version": "0.5.0",
+    "description": "Lightweight unit-test framework for embedded C: Unity-style assertions, header-only mocks, exceptions, virtual peripherals, parametric & property-based tests, and pluggable trace transports (UART/RTT/ITM/semihosting).",
+    "keywords": ["unit-test", "testing", "tdd", "mocks", "embedded", "cortex-m", "stm32", "esp32"],
+    "homepage": "https://github.com/tevfik/ceedless",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/tevfik/ceedless.git"
+    },
+    "authors": [
+        {
+            "name": "Tevfik",
+            "url": "https://github.com/tevfik",
+            "maintainer": true
+        }
+    ],
+    "license": "MIT",
+    "frameworks": "*",
+    "platforms": "*",
+    "headers": "ceedless/ceedless.h",
+    "build": {
+        "srcDir": "src",
+        "includeDir": "include",
+        "flags": [
+            "-DCEEDLESS_TRACE_HOST",
+            "-std=c11"
+        ]
+    },
+    "examples": [
+        "examples/sensor_driver/*",
+        "examples/cortex_m/*"
+    ]
+}

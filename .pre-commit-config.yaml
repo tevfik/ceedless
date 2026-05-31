@@ -1,0 +1,38 @@
+# See https://pre-commit.com for usage.
+#
+#   pip install pre-commit
+#   pre-commit install
+#
+# Runs gofmt + go vet on the CLI, basic hygiene checks on every commit,
+# and lets `make lint` (which also runs Go unit tests) gate any push.
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=512]
+      - id: check-yaml
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-fmt
+        files: ^cli/.*\.go$
+      - id: go-vet
+        files: ^cli/.*\.go$
+        args: [./cli/...]
+
+  - repo: local
+    hooks:
+      - id: ceedless-lint
+        name: ceedless lint (gofmt + go vet + go test)
+        entry: make lint
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

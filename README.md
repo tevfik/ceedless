@@ -12,15 +12,22 @@ binary CLI.
 **Key features:**
 
 - Unity-style assertion macros (full set: INT, HEX, FLOAT, STRING, MEMORY, ARRAY)
-- Header-only function mocks (MOCK_DEFINE / MOCK_EXPECT_* / MOCK_VERIFY)
+- Header-only function mocks with argument matchers, callbacks, throw, return-thru-ptr
 - Try / Catch / Throw exception handling
 - Virtual peripherals: SPI, UART, GPIO, ADC (stateful, register-bank backed)
-- On-target execution support (same source builds for host SIL and MCU PIL)
-- Pluggable trace transport (ITM, RTT, UART, host-printf, ring-buffer)
+- On-target execution support — same source compiles for host SIL and Cortex-M PIL
+  (see [`examples/cortex_m/`](examples/cortex_m/README.md) for a QEMU runner)
+- Pluggable trace transport: host-printf, UART, RTT, ITM, semihosting, ring-buffer
+- Parametric `TEST_CASE(...)` annotations + property-based `TEST_PROPERTY`
+- Snapshot / golden-byte assertions for protocol & codec tests
+- Deterministic test order shuffle (`--shuffle --seed`) for flake hunting
 - Auto test discovery + runner generation (`ceedless test`)
-- gcov coverage, JUnit XML output, file-watch mode
+- gcov coverage, JUnit XML + TAP output, HTML aggregate report
+- Sanitizer flag passthrough (`--asan/--ubsan/--msan`) and `ceedless fuzz`
+  libFuzzer harness generator
+- Build integrations: GNU Make, **CMake** (`add_ceedless_test`), **PlatformIO**
 
-Zero dynamic allocation. ~1500 LOC of portable C11.
+Zero dynamic allocation in the core. ~2000 LOC of portable C11.
 
 ---
 
@@ -51,6 +58,57 @@ OK: negative test failed as expected
 === result: 3/3 passed, 0 failed, 0 ignored ===
 ceedless: 1/1 test programs passed
 ```
+
+### CMake
+
+```cmake
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+set(CEEDLESS_HOME "${CMAKE_SOURCE_DIR}/external/ceedless")
+include(ceedless)
+
+enable_testing()
+add_ceedless_test(test_packet
+    SOURCES test/test_packet.c src/packet.c
+    INCLUDE include
+)
+```
+
+Run with `cmake -B build && ctest --test-dir build --output-on-failure`.
+
+### Parametric tests
+
+```c
+TEST_CASE(0, 0, 0)
+TEST_CASE(1, 2, 3)
+TEST_CASE(-5, 5, 0)
+static void test_add(int a, int b, int expected)
+{
+    TEST_ASSERT_EQUAL_INT(expected, a + b);
+}
+```
+
+The runner generator emits one `RUN_TEST_CASE` call per `TEST_CASE` line —
+no manual dispatch needed.
+
+### Property-based tests
+
+```c
+TEST_PROPERTY(x, 256, {
+    uint32_t y = ceedless_rand_u32();
+    TEST_ASSERT_EQUAL_UINT32(x + y, y + x);
+});
+```
+
+Use `--seed N` (or `CEEDLESS_SEED=N`) for reproducible failures.
+
+### Cortex-M PIL
+
+```bash
+cd examples/cortex_m && make qemu
+```
+
+Runs the same assertion suite on an ARM Cortex-M3 under QEMU with
+semihosting output. See [`examples/cortex_m/README.md`](examples/cortex_m/README.md).
 
 ---
 

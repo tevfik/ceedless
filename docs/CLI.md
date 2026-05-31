@@ -40,10 +40,16 @@ ceedless test [options] [pattern]
   -v, --verbose          echo compiler command lines
       --gcov             build with --coverage
       --junit-dir DIR    write one JUnit XML per test program to DIR
+      --tap-dir DIR      write one TAP file per test program to DIR
       --target T         define CEEDLESS_TARGET=T (hybrid host/MCU builds)
       --timing           print per-test program wall time
       --format text|tap  report format (TAP at build/report.tap)
       --report-dir DIR   collect all reports under DIR
+      --asan             link with AddressSanitizer
+      --ubsan            link with UndefinedBehaviorSanitizer
+      --msan             link with MemorySanitizer (clang only)
+      --shuffle          randomize test order
+      --seed N           PRNG seed (non-zero implies --shuffle)
 ```
 
 | Command | Shortcut for |
@@ -58,6 +64,8 @@ ceedless test [options] [pattern]
 | `ceedless bench` | Run tests then print 10 slowest with timing |
 | `ceedless cov` | Run tests with gcov, then write `build/coverage.html` |
 | `ceedless mock <header.h>` | Print `MOCK_DEFINE(...)` stubs for every function declared |
+| `ceedless fuzz <fn> -h <hdr>` | Generate + run a libFuzzer harness (needs clang) |
+| `ceedless report DIR` | Aggregate JUnit XMLs into `DIR/index.html` |
 | `ceedless doctor` | Check toolchain (gcc, gcov, gcovr, docker, qemu, arm-none-eabi) |
 
 ### Containers
@@ -74,8 +82,11 @@ ceedless test [options] [pattern]
 |-----|---------|
 | `CEEDLESS_HOME` | Override framework location |
 | `CEEDLESS_JUNIT` | Path to write a single JUnit XML (consumed by test binaries) |
+| `CEEDLESS_TAP` | Path to write a single TAP report (consumed by test binaries) |
+| `CEEDLESS_SEED` | xorshift32 seed; non-zero enables deterministic shuffle |
+| `CEEDLESS_GOLDEN_UPDATE` | Set to `1` to refresh all `TEST_ASSERT_GOLDEN_BYTES` files |
 | `CEEDLESS_NO_COLOR` / `NO_COLOR` | Disable ANSI colors |
-| `CC` | C compiler (default `gcc`) |
+| `CC` | C compiler (default `gcc`; use `clang` for `fuzz`/`msan`) |
 
 ## project.yml
 

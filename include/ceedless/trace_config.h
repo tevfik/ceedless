@@ -8,13 +8,14 @@
  *   -DCEEDLESS_TRACE_RTT      (calls weak ceedless_rtt_*  hooks)
  *   -DCEEDLESS_TRACE_ITM      (writes ARM ITM stimulus port 0, weakly)
  *   -DCEEDLESS_TRACE_BUFFER   (captures into an in-memory ring buffer)
+ *   -DCEEDLESS_TRACE_SEMIHOST (ARM Cortex-M: semihosting SYS_WRITE0)
  */
 #ifndef CEEDLESS_TRACE_CONFIG_H
 #define CEEDLESS_TRACE_CONFIG_H
 
 #if !defined(CEEDLESS_TRACE_HOST)   && !defined(CEEDLESS_TRACE_UART) && \
     !defined(CEEDLESS_TRACE_RTT)    && !defined(CEEDLESS_TRACE_ITM)  && \
-    !defined(CEEDLESS_TRACE_BUFFER)
+    !defined(CEEDLESS_TRACE_BUFFER) && !defined(CEEDLESS_TRACE_SEMIHOST)
 #define CEEDLESS_TRACE_HOST 1
 #endif
 

@@ -1,5 +1,6 @@
 # Build artifacts
 build/
+build-cmake/
 bin/ceedless
 *.o
 *.obj
@@ -7,6 +8,13 @@ bin/ceedless
 *.so
 *.dylib
 *.exe
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
 
 # Coverage
 *.gcda
@@ -21,7 +29,10 @@ report.tap
 reports/
 
 # Editor / IDE
-.vscode/
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
 .idea/
 *.swp
 *.swo

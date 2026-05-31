@@ -1,0 +1,50 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "ceedless: build all",
+            "type": "shell",
+            "command": "make all",
+            "group": { "kind": "build", "isDefault": true },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "ceedless: run self-tests",
+            "type": "shell",
+            "command": "make test",
+            "group": "test",
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "ceedless: lint (gofmt+vet+go test)",
+            "type": "shell",
+            "command": "make lint",
+            "problemMatcher": []
+        },
+        {
+            "label": "ceedless: coverage report",
+            "type": "shell",
+            "command": "./bin/ceedless cov",
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "ceedless: watch (re-run on file change)",
+            "type": "shell",
+            "command": "./bin/ceedless watch",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "ceedless: HTML report from reports/",
+            "type": "shell",
+            "command": "./bin/ceedless test --report-dir reports && ./bin/ceedless report reports/",
+            "problemMatcher": []
+        },
+        {
+            "label": "ceedless: clean",
+            "type": "shell",
+            "command": "make clean",
+            "problemMatcher": []
+        }
+    ]
+}
